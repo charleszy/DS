@@ -167,10 +167,10 @@ class Player:
 				peer_Msg = self.peerlist[i]
 				client_thread = client(peer_Msg.ip, peer_Msg.port, send_list)
 				client_thread.start()
-        elif (choice == '2'):
-            while (len(server_thread.getList()) == 0):
-                pass
-            self.peerlist = server_thread.getList()
+		else:
+			while (len(server_thread.getList()) == 0):
+				pass
+			self.peerlist = server_thread.getList()
 
 class Table:
 	horizonSize = 500
@@ -242,11 +242,10 @@ class Table:
 
 class Server(threading.Thread):
 	tables = {}
-    
-    storage = []
-    
-    def getList(self):
-        return self.storage
+	storage = []
+
+	def getList(self):
+		return self.storage
 	
 	def __init__(self, port, choice):
 		threading.Thread.__init__(self)
@@ -273,7 +272,7 @@ class Server(threading.Thread):
 			list_of_players = pickle.loads(client_resp)
 			peerlist = list_of_players
 			print 'List : '
-            self.storage = peerlist
+			self.storage = peerlist
 			for msg in peerlist:
 				print msg.name
 			for j in range(0,len(peerlist)):
