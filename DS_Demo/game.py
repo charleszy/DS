@@ -95,8 +95,8 @@ class Player:
 						#print "Broadcast message sent"
 						try :
 							recv_data, addr = server_socket.recvfrom(2048)
-							self.peerlist.append(addr)
-							print self.peerlist
+							peerlist.append(addr)
+							print peerlist
 						except:
 							pass
 				sock.close()
@@ -128,7 +128,7 @@ class Player:
 				
 		server_socket.close()
 		#start the server thread  
-		server_thread =  Server(self.myport)
+		server_thread =  Server(self.myport, int(choice))
 		server_thread.start()
 
 		#start client threads for all the players who responded
@@ -141,17 +141,6 @@ class Player:
 				(peer_addr,peer_port) = self.peerlist[i]
 				client_thread = client(peer_addr, peer_port, send_list, 1)
 				client_thread.start()
-
-		elif (choice == "2"):
-			while True:
-				if(len(self.peerlist) != 0):
-					break
-
-			for j in range(0,len(self.peerlist)) :
-				if (peer_port != self.myport):
-					(peer_addr,peer_port) = self.peerlist[i]
-					client_thread = client(peer_addr, peer_port, send_list, 1) 
-					client_thread.start()
 
 class Table:
 	horizonSize = 500
@@ -222,21 +211,43 @@ class Table:
 			print 'name %s : ip %s' % (self.players[player].getName(), self.players[player].getIp())
 
 class Server(threading.Thread):
-
-	def __init__(self, port):
+	tables = {}
+	
+	def __init__(self, port, choice):
 		threading.Thread.__init__(self)
 		self.port = port
-	tables = {}
+		self.creator = choice
+
 	def run ( self ):
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		s.bind(('', self.port))
 		s.listen(5)
-		while True :
+		if (self.creator == 1):
+			while True :
+				conn, addr = s.accept()
+				print 'Accepted connection from '
+				print addr
+				handler = Handler(conn,addr)
+				handler.start()
+		else:
 			conn, addr = s.accept()
 			print 'Accepted connection from '
 			print addr
-			handler = Handler(conn,addr)
-			handler.start()
+			client_resp = conn.recv(1024)
+			list_of_players = pickle.loads(client_resp)
+			peerlist = list_of_players
+			print 'List : ', peerlist
+			for j in range(0,len(peerlist)):
+				(peer_addr,peer_port) = peerlist[j]
+				if (peer_port != myport):
+					client_thread = client(peer_addr, peer_port, "hi") 
+					client_thread.start()
+			while True:
+				conn, addr = s.accept()
+				print 'Accepted connection from '
+				print addr
+				handler = Handler(conn,addr)
+				handler.start()
 
 	def addTable(self, table):
 		if table.getName() in self.tables:
@@ -260,34 +271,11 @@ class client(threading.Thread):
         self.port = port
         self.host = ip # Get local machine name
         self.data = data
-        self.is_list = is_list
         self.clientSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         
     def run(self):
         print 'Connecting to ', self.host, self.port
         self.clientSock.connect((self.host, self.port))      
-        print "Sending list to client"
-        #if (self.isList == 1):
-            #send_data  = pickle.dumps(self.data)
-            #self.clientSock.send(send_data)
-        #else :
-        while True:
-            msg = raw_input('Client : ')
-            self.clientSock.send(msg)
-#
-#p1 = Player()
-#p2 = Player()
-#p1.setName('CharlesZY')
-#p2.setName('CocoDuan')
-#p2.setIp('192.168.0.1')
-#t = Table('table1', p1)
-#t.printPlayer();
-#t.addPlayer(p2)
-#t.printPlayer();
-#s = Server(12345)
-#s.addTable(t)
-#for tn in s.getTableNames():
-#	print tn
-#	tb = s.getTable(tn)
-#	tb.printPlayer()
+        send_data  = pickle.dumps(self.data)
+        self.clientSock.send(send_data)
 

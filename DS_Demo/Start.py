@@ -71,23 +71,9 @@ if __name__=='__main__':
     p1.setName('CharlesZY')
 
     t = Table('table1', p1)
-#    t.printPlayer();
-    t.addPlayer(p1)
-#    t.printPlayer();
-    s = Server(123457)
-    s.addTable(t)
     userlist = t.getPlayerNames()
     print userlist
     startFrame = StartPage(userlist, parent=None, id=-1)
     startFrame.Show()
-    t.addPlayer(p1)
-    
-#    tmr = TimerClass()
-#    tmr.start()
-#
-#    time.sleep( 20 )
-#    tmr.stop()
-    
-#    startFrame.playerList.refreshList(t.getPlayerNames())
     app.MainLoop()
     
