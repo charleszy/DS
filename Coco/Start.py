@@ -23,7 +23,7 @@ class StartPage(wx.Frame):
         try:
             image_file = 'ZatackaLogo.png'
             img = wx.Image(image_file, wx.BITMAP_TYPE_ANY)
-            self.imageCtrl.SetBitmap(wx.BitmapFromImage(img))
+#            self.imageCtrl.SetBitmap(wx.BitmapFromImage(img))
             
         except IOError:
             print "Image not found"
