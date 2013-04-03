@@ -8,6 +8,21 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(name)s: %(message)s',
                     )
 
+class Msg:
+	ip = ''
+	port = 0
+	name = ''
+	status = ''
+	x = 0;
+	y = 0;
+	def __init__(self, ip, port, name, status, x, y):
+		self.ip = ip
+		self.port = port
+		self.name = name
+		self.status = status
+		self.x = x
+		self.y = y
+
 class Handler ( threading.Thread ):
 	def __init__ (self, conn, addr):
 		threading.Thread.__init__(self)
@@ -16,8 +31,10 @@ class Handler ( threading.Thread ):
 	
 	def run (self ):
 		while True :
-			msg = self.conn.recv(1024)
-			print "Received data: %s" % repr(msg)
+			client_msg = self.conn.recv(1024)
+			message = client_msg
+			if message != '':
+				print 'Received data  :', message
 
 
 class Player:
@@ -30,7 +47,7 @@ class Player:
 	
 	peerlist = []
 	BC_PORT = 12345
-	myport = 1235
+	myport = 1234
 #	global ip
 	ip = socket.gethostbyname(socket.gethostname())
 	
@@ -78,6 +95,10 @@ class Player:
 		print address
 		server_socket.bind(address)
 		server_socket.setblocking(False)
+
+		data = Msg(self.ip, self.myport, self.name, self.status, self.startX, self.startY)
+		broadcastdata  = pickle.dumps(data)
+
 		flag = True
 		while flag:
 			self.logger.debug('Choice1: "%s"', choice)
@@ -87,7 +108,6 @@ class Player:
 				sock.bind(('', 0))
 				sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 				myaddr = (self.ip,self.myport)
-				broadcastdata  = pickle.dumps(myaddr)
 				while (len(self.peerlist) < 1):
 					begin = time.time()
 					while ((time.time() - begin) < 10) :
@@ -95,8 +115,11 @@ class Player:
 						#print "Broadcast message sent"
 						try :
 							recv_data, addr = server_socket.recvfrom(2048)
-							peerlist.append(addr)
-							print peerlist
+							r_Msg = pickle.loads(recv_data)
+							self.peerlist.append(r_Msg)
+							print 'List:'
+							for message in self.peerlist:
+								print message.name
 						except:
 							pass
 				sock.close()
@@ -115,14 +138,14 @@ class Player:
 						break
 					except:
 						pass
-				(sender_ip,sender_port) = pickle.loads(message)
+				s_Msg = pickle.loads(message)
 				print 'Sender Port '
-				print sender_port
+				print s_Msg.port
 				print 'Sender IP '
-				print sender_ip
-				sender_address = (sender_ip, int(sender_port))
+				print s_Msg.ip
+				sender_address = (s_Msg.ip, int(s_Msg.port))
 				print sender_address
-				server_socket.sendto("join", sender_address)
+				server_socket.sendto(broadcastdata, sender_address)
 				print "Sent join"
 				sock.close()
 				
@@ -132,14 +155,17 @@ class Player:
 		server_thread.start()
 
 		#start client threads for all the players who responded
+
+		print 'choice:', choice
+
 		if (choice == "1"):
 			num_other_players = len(self.peerlist)
 			send_list = self.peerlist
-			send_list.append(address)
+			send_list.append(data)
 			print self.peerlist
 			for i in range(0,num_other_players) :
-				(peer_addr,peer_port) = self.peerlist[i]
-				client_thread = client(peer_addr, peer_port, send_list, 1)
+				peer_Msg = self.peerlist[i]
+				client_thread = client(peer_Msg.ip, peer_Msg.port, send_list)
 				client_thread.start()
 
 class Table:
@@ -219,6 +245,7 @@ class Server(threading.Thread):
 		self.creator = choice
 
 	def run ( self ):
+		print 'server run:'
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		s.bind(('', self.port))
 		s.listen(5)
@@ -236,11 +263,13 @@ class Server(threading.Thread):
 			client_resp = conn.recv(1024)
 			list_of_players = pickle.loads(client_resp)
 			peerlist = list_of_players
-			print 'List : ', peerlist
+			print 'List : '
+			for msg in peerlist:
+				print msg.name
 			for j in range(0,len(peerlist)):
-				(peer_addr,peer_port) = peerlist[j]
-				if (peer_port != myport):
-					client_thread = client(peer_addr, peer_port, "hi") 
+				peer_Msg = peerlist[j]
+				if (peer_Msg.port != self.port):
+					client_thread = client(peer_Msg.ip, peer_Msg.port, "hi") 
 					client_thread.start()
 			while True:
 				conn, addr = s.accept()
@@ -266,7 +295,7 @@ class Server(threading.Thread):
 		return self.tables[name]
 	
 class client(threading.Thread):
-    def __init__(self, ip, port, data, is_list):
+    def __init__(self, ip, port, data):
         threading.Thread.__init__(self)
         self.port = port
         self.host = ip # Get local machine name

@@ -68,7 +68,7 @@ class TimerClass(threading.Thread):
 if __name__=='__main__':
     app = wx.PySimpleApp()
     p1 = Player()
-    p1.setName('CharlesZY')
+    p1.setName('CocoDuan')
 
     t = Table('table1', p1)
     userlist = t.getPlayerNames()
