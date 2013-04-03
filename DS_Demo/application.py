@@ -63,7 +63,7 @@ class Player():
     peerlist = []
     BC_PORT = 12345
     global myport
-    myport = 1234
+    myport = 1235
     
     global myip
     myip = socket.gethostbyname(socket.gethostname())
@@ -84,7 +84,7 @@ class Player():
         
         # User Prompt initially
         while flag:
-#            choice = raw_input("1.Send Broadcast 2.Wait for Broadcast \nChoice???")
+            choice = raw_input("1.Send Broadcast 2.Wait for Broadcast \nChoice???")
             logger.debug('Choice1: "%s"', choice)
     
             if (choice == "1"):
