@@ -25,11 +25,11 @@ class StartPage(wx.Frame):
 
     def startGame(self, event):
         print "start"
-        p1.main_func(1)
+        p1.main_func("1")
         
     def receive(self, event):
         print "receive"
-        p1.main_func(2)
+        p1.main_func("2")
 #        self.playerList = PlayerList(parent=None, id=-1)
         while p1.peerlist is None:
             pass
@@ -74,7 +74,7 @@ if __name__=='__main__':
 #    t.printPlayer();
     t.addPlayer(p1)
 #    t.printPlayer();
-    s = Server(123456)
+    s = Server(123457)
     s.addTable(t)
     userlist = t.getPlayerNames()
     print userlist

@@ -30,7 +30,7 @@ class Player:
 	
 	peerlist = []
 	BC_PORT = 12345
-	myport = 1234
+	myport = 1235
 #	global ip
 	ip = socket.gethostbyname(socket.gethostname())
 	
@@ -115,7 +115,7 @@ class Player:
 						break
 					except:
 						pass
-					(sender_ip,sender_port) = pickle.loads(message)
+				(sender_ip,sender_port) = pickle.loads(message)
 				print 'Sender Port '
 				print sender_port
 				print 'Sender IP '
@@ -128,7 +128,7 @@ class Player:
 				
 		server_socket.close()
 		#start the server thread  
-		server_thread =  server(self.myport)
+		server_thread =  Server(self.myport)
 		server_thread.start()
 
 		#start client threads for all the players who responded
