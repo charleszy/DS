@@ -3,7 +3,7 @@ Created on Apr 2, 2013
 
 @author: Coco
 '''
-import wx
+import wx 
 from Server import *
 import threading
 import time
