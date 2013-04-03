@@ -59,11 +59,14 @@ class client(threading.Thread):
 
 class Player():
    
+    global peerlist
     peerlist = []
     BC_PORT = 12345
-    port = 1235
+    global myport
+    myport = 1234
+    global myip
     myip = socket.gethostbyname(socket.gethostname())
-    address = (myip, port)
+    address = (myip, myport)
     
     def __init__(self):
         self.logger = logging.getLogger('Player')
@@ -89,7 +92,7 @@ class Player():
                 sock.bind(('', 0))
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
              
-                myaddr = (myip,port)
+                myaddr = (myip,myport)
                 broadcastdata  = pickle.dumps(myaddr)
                 while (len(peerlist) < 1):
                     begin = time.time()
@@ -135,17 +138,30 @@ class Player():
             
         server_socket.close()
         
-        #setup TCP connections  
-        server_thread =  server(port)   
+        #start the server thread  
+        server_thread =  server(myport)   
         server_thread.start()
-        
-        num_other_players = len(peerlist)
-        send_list = peerlist
-        send_list.append(address)
 
-        for i in range(0,num_other_players) :
-            (peer_addr,peer_port) = peerlist[i]
-            client_thread = client(peer_addr, peer_port, send_list, 1) 
-            client_thread.start()
+        #start client threads for all the players who responded
+        if (choice == "1"):
+            num_other_players = len(peerlist)
+            send_list = peerlist
+            send_list.append(address)
+            print peerlist
+            for i in range(0,num_other_players) :
+                (peer_addr,peer_port) = peerlist[i]
+                client_thread = client(peer_addr, peer_port, send_list, 1) 
+                client_thread.start()
+                
+        elif (choice == "2"):
+            while True:
+                if(len(peerlist) != 0):
+                    break
+                
+            for j in range(0,len(peerlist)) :
+                if (peer_port != myport):
+                    (peer_addr,peer_port) = peerlist[i]
+                    client_thread = client(peer_addr, peer_port, send_list, 1) 
+                    client_thread.start()
         
-            
+                
