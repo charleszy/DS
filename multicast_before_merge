@@ -1,0 +1,417 @@
+import socket
+import logging
+import time
+import pickle
+import threading
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(name)s: %(message)s',
+                    )
+
+class Msg:
+    ip = ''
+    port = 0
+    name = ''
+    status = ''
+    x = 0;
+    y = 0;
+    data = ''
+    msg_type = ''
+    
+    
+    def __init__(self, ip, port, name, status, x, y, data, msg_type, Node):
+        self.ip = ip
+        self.port = port
+        self.name = name
+        self.status = status
+        self.x = x
+        self.y = y
+        self.mc_seqno = 0
+        self.data = data
+        self.msg_type = msg_type
+
+class Handler ( threading.Thread ):
+    def __init__ (self, conn, addr):
+        threading.Thread.__init__(self)
+        self.conn = conn
+        self.addr = addr
+    
+    def run (self ):
+        while True :
+            client_msg = self.conn.recv(5000)
+            '''
+            TODO: Receive the message object
+             message = pickle.loads(client_msg)
+             message.data == "Restart"
+             update score 
+             if any persons score is MAX SCORE
+                 display score and go to main screen
+             else
+                 wait for 3 seconds
+             start round
+            ''' 
+            message = pickle.loads(client_msg)
+            if message.data != '':
+                print 'Received data  :', message.data            
+
+''' 
+Player class:
+    Each peer is a player.
+    One player chooses to send a broadcast and the other players who accept the broadcast 
+    and reply within 10 seconds are part of that game. The Broadcast is a UDP message.
+    The players respond with a 'join' message. Once the sender receives a broadcast message
+    TCP connections are established between all peers.
+    One the TCP connections are established, the sender sends the list of players to all the 
+    players in the group.
+'''
+class Player:
+    logger = logging.getLogger('Player')
+    name = ''
+    ip = ''
+    status = ''
+    startX = 0
+    startY = 0
+    
+    peerlist = []
+    client_obj_list = []
+    BC_PORT = 12345
+    myport = 4536
+    global score[]
+    
+    ip = socket.gethostbyname(socket.gethostname())
+    
+    def __init__(self,name = ''):
+        self.name = name
+        self.status = 'waiting'
+        self.logger = logging.getLogger('Player')
+        self.logger.debug('__init__')
+
+    def getName(self):
+        return self.name
+
+    def getIp(self):
+        return self.ip
+
+    def setName(self, name):
+        self.name = name
+
+    def setIp(self, ip):
+        self.ip = ip
+
+    def setStatus(self):
+        if self.status == 'waiting':
+            self.status = 'ready'
+        elif self.status == 'ready':
+            self.status = 'waiting'
+
+    def getStatus(self):
+        return self.status
+
+    def equals(self, rhs):
+        if self.name == rhs.name and self.ip == rhs.ip:
+            return True
+        else:
+            return False
+
+    def initSnake(self, x, y):
+        startX = x;
+        startY = y;
+
+    def get_client_thr_obj(self, ip, port):
+        for k in range(0, len(self.client_obj_list)):
+            if ((ip == self.client_obj_list[k].ip) and
+                (port == self.client_obj_list[k].port)):
+                return self.client_obj_list[k]
+
+    def send_msg_to_list(self, peerlist, Msg):
+        #use this msg to send
+        for j in range(0, len(peerlist)):
+            peer_Msg = peerlist[j]
+            if ((peer_Msg.ip == self.ip) and
+                (peer_Msg.port == self.myport)):
+                continue
+            else:
+                #client_thread = client(peer_Msg.ip, peer_Msg.port, Msg)
+                #client_thread.start()
+                client_obj = self.get_client_thr_obj(peer_Msg.ip, peer_Msg.port)
+                client_obj.send(Msg)
+
+    def main_func(self, choice):
+        self.logger = logging.getLogger('Player')
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        address = (self.ip, self.myport)
+        print address
+        server_socket.bind(address)
+        server_socket.setblocking(False)
+  
+        mydata = Msg(self.ip, self.myport, self.name, self.status, self.startX, self.startY, '','')
+        broadcastdata  = pickle.dumps(mydata)
+
+        flag = True
+        while flag:
+            self.logger.debug('Choice: "%s"', choice)
+            # Player has chosen to send broadcast (start the game)
+            if (choice == "1"):
+                flag = False
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.bind(('', 0))
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                myaddr = (self.ip,self.myport)
+                while (len(self.peerlist) < 1):
+                    begin = time.time()
+                    while ((time.time() - begin) < 10) :
+                        sock.sendto(broadcastdata, ('<broadcast>', self.BC_PORT))
+                        '''
+                        Broadcast message sent
+                        Wait for 10 seconds, minimum, or wait until atleast 1
+                        person joins the game.
+                        '''
+                        try :
+                            recv_data, addr = server_socket.recvfrom(2048)
+                            r_Msg = pickle.loads(recv_data)
+                            ''' 
+                            peerlist contains the list of all peers who responded to the
+                            BC_message. 
+                            '''
+                            self.peerlist.append(r_Msg)
+                            print 'List:'
+                            for message in self.peerlist:
+                                print message.name
+                        except:
+                            pass
+                sock.close()
+                
+            # Player has chosen to receive broadcast (join the game)
+            if (choice == "2"):
+                # Receive a response
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                sock.bind(('', self.BC_PORT))
+                sock.setblocking(False)
+                begin = time.time()
+                '''
+                If the player has not received a broadcast (able to join a game)
+                within 10 seconds
+                '''
+                while ((time.time() - begin) < 10) :
+                    try :
+                        message, addr = sock.recvfrom(8192)
+                        flag = False
+                        break
+                    except:
+                        pass
+                    
+                if message != '':
+                    s_Msg = pickle.loads(message)
+                    print 'Sender Port '
+                    print s_Msg.port
+                    print 'Sender IP '
+                    print s_Msg.ip
+                    sender_address = (s_Msg.ip, int(s_Msg.port))
+                    print sender_address
+                    server_socket.sendto(broadcastdata, sender_address)
+                    print "Sent join"
+                    sock.close()
+                
+        server_socket.close()
+        
+        #start the server thread  
+        server_thread =  Server(self.ip, self.myport, int(choice))
+        server_thread.start()
+
+        '''
+        If the player has chosen to start the game, start client threads for all 
+        the players who responded.
+
+        '''        
+        if (choice == "1"):
+            num_other_players = len(self.peerlist)
+            send_list = self.peerlist
+            send_list.append(mydata)
+            print self.peerlist
+            
+            #send the list            
+            for i in range(0,num_other_players) :
+                peer_Msg = self.peerlist[i]
+                client_thread = client(peer_Msg.ip, peer_Msg.port)
+                self.client_obj_list.append(client_thread)
+                client_thread.start()
+                
+            time.sleep(1);
+            #send the list of all players (including self) to all the clients in my client list
+            self.send_msg_to_list(self.peerlist, send_list)
+                 
+        else:
+            # Wait until you get the list of players from the starter
+            while (len(server_thread.getList()) == 0):
+                time.sleep(0.01)
+                
+            self.peerlist = server_thread.getList()
+            '''
+            TODO: Once you have the list of players, wait for 5 seconds and start the game
+            '''
+            #time.sleep(5);          
+        
+        #start the GAME!
+        mynode = Node(width, height, headX, headY, direction, rectangles, neighbors, ip, port, myId)
+        
+        #keep playing as long as you dont win or lose
+        iWon = 0
+        while True:
+            iWon = mynode.update(direction,color)
+            if (iWon != 0):
+                break 
+        
+        # You won. So calculate the score for every1 and multicast a restart message
+        if (iWon == 1):
+            calculate_score(mynode)  
+
+class Table:
+    horizonSize = 500
+    verticalSize = 500
+
+    name = ''
+    players = {}
+
+    def __init__(self, name = '', player = None):
+        self.name = name
+        self.players[self.getName()] = player
+
+    def setName(self, name):
+        self.name = name
+
+    def getName(self):
+        return self.name
+
+    def addPlayer(self, player):
+        if player in self.players:
+            return False
+        else:
+            self.players[player.getName()] = player
+            return True
+
+    def removePlayer(self, name):
+        del self.players[name]
+
+    def getPlayer(self, name):
+        return self.players[name]
+
+    def initSnake(self):
+        x = len(self.players.keys())
+        y = x // (x ** .5)
+        x = (x + y - 1) // y
+        i = -1;
+        j = 0;
+        for player in self.players.keys():
+            i = i + 1
+            if i == x:
+                j = j + 1
+                i = 0;
+            self.players[player].initSnake(self.horizonSize * i / x + self.horizonSize / x / 2, 
+                                           self.verticalSize * j / y + self.verticalSize / y / 2)
+
+        for destPlayer in self.players.keys():
+            destIp = self.players[destPlayer].getIp()
+            for messagePlayer in self.players.keys():
+                message = self.players[messagePlayer].getIp()
+                #send(destIp, msg)
+            #send(destIp, destPlayer)
+
+    def setPlayerStatus(self, name):
+        self.players[name].setStatus()
+        flag = True
+        for player in self.players.keys():
+            if self.players[player].getStatus() != 'ready':
+                flag = False
+                break
+        if flag:
+            self.initSnake()
+
+    def getPlayerNames(self):
+        return self.players.keys()
+
+    def printPlayer(self):
+        for player in self.players.keys():
+            print 'name %s : ip %s' % (self.players[player].getName(), self.players[player].getIp())
+
+class Server(threading.Thread):
+    tables = {}
+    storage = []
+
+    def __init__(self, ip, port, choice):
+        threading.Thread.__init__(self)
+        self.ip = ip
+        self.port = port
+        self.creator = choice
+
+    def run ( self ):
+        print 'server run:'
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind((self.ip, self.port))
+        s.listen(5)
+        # If I am the starter, what I receive is 'join'
+        if (self.creator == 1):
+            while True :
+                conn, addr = s.accept()
+                print 'Accepted connection from '
+                print addr
+                handler = Handler(conn,addr)
+                handler.start()
+        # If I am NOT the starter, what I receive is the list of peers
+        else:
+            conn, addr = s.accept()
+            print 'Accepted connection from '
+            print addr
+            client_resp = conn.recv(5000)
+            list_of_players = pickle.loads(client_resp)
+            peerlist = list_of_players
+            print 'List : '
+            self.storage = peerlist
+            for msg in peerlist:
+                print msg.name
+            #send the data to the required person/list
+            #send Hi
+                    
+            while True:
+                conn, addr = s.accept()
+                print 'Accepted connection from '
+                print addr
+                handler = Handler(conn,addr)
+                handler.start()
+
+    def getList(self):
+        return self.storage
+
+    def addTable(self, table):
+        if table.getName() in self.tables:
+            return False
+        else:
+            self.tables[table.getName()] = table
+            return True
+
+    def removeTable(self, tableName):
+        del self.tables[tableName]
+
+    def getTableNames(self):
+        return self.tables.keys()
+
+    def getTable(self, name):
+        return self.tables[name]
+    
+class client(threading.Thread):
+    
+    def __init__(self, ip, port):
+        threading.Thread.__init__(self)
+        self.port = port
+        self.ip = ip # Get local machine name
+        self.clientSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+        
+    def run(self):
+        print 'Connecting to ', self.ip, self.port
+        self.clientSock.connect((self.ip, self.port))  
+        
+    def send(self, data):    
+        send_data  = pickle.dumps(data)
+        self.clientSock.send(send_data)
+
