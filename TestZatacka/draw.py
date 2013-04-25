@@ -141,14 +141,14 @@ class Draw():
     def drawTrack(self, coords, color):
         points = []
         if len(coords) is 1:
-            drawStartPoint(coords, color)
+            self.drawStartPoint(coords, color)
         else:
             for coord in coords:
                 x = coord['x'] * CELLSIZE
                 y = coord['y'] * CELLSIZE
                 print 'track', x, y
                 points.append((x, y))
-                pygame.draw.lines(DISPLAYSURF, color, False, points, CELLSIZE)
+            pygame.draw.lines(DISPLAYSURF, color, False, points, CELLSIZE)
     
     # draw a point
     def drawPixel(self, surface, color, pos):
